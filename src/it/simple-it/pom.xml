@@ -19,12 +19,15 @@
         <groupId>@project.groupId@</groupId>
         <artifactId>@project.artifactId@</artifactId>
         <version>@project.version@</version>
+        <configuration>
+          <identity>AKIAIQUE53POBWFEF2ZQ</identity>
+        </configuration>
         <executions>
           <execution>
-            <id>touch</id>
+            <id>test</id>
             <phase>validate</phase>
             <goals>
-              <goal>touch</goal>
+              <goal>init</goal>
             </goals>
           </execution>
         </executions>

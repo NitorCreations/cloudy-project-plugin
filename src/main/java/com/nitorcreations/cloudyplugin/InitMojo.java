@@ -1,84 +1,129 @@
 package com.nitorcreations.cloudyplugin;
 
-/*
- * Copyright 2001-2005 The Apache Software Foundation.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 
-import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.maven.project.MavenProject;
+import org.jclouds.ContextBuilder;
+import org.jclouds.compute.ComputeService;
+import org.jclouds.compute.ComputeServiceContext;
+import org.jclouds.compute.domain.NodeMetadata;
+import org.jclouds.compute.domain.TemplateBuilder;
+import org.jclouds.domain.LoginCredentials;
+import org.jclouds.enterprise.config.EnterpriseConfigurationModule;
+import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
+import org.jclouds.scriptbuilder.domain.Statement;
+import org.jclouds.scriptbuilder.statements.login.AdminAccess;
+import org.jclouds.sshj.config.SshjSshClientModule;
+
+import com.google.common.collect.ImmutableSet;
+import com.google.common.io.Files;
+import com.google.inject.Module;
+
+import static com.google.common.base.Charsets.UTF_8;
+import static com.google.common.collect.Iterables.concat;
+import static com.google.common.collect.Iterables.getOnlyElement;
+import static org.jclouds.aws.ec2.reference.AWSEC2Constants.PROPERTY_EC2_AMI_QUERY;
+import static org.jclouds.aws.ec2.reference.AWSEC2Constants.PROPERTY_EC2_CC_AMI_QUERY;
+import static org.jclouds.compute.config.ComputeServiceProperties.TIMEOUT_SCRIPT_COMPLETE;
+import static org.jclouds.compute.options.TemplateOptions.Builder.overrideLoginUser;
+import static org.jclouds.compute.options.TemplateOptions.Builder.runScript;
 
 import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.util.Properties;
+import java.util.Scanner;
+import java.util.concurrent.TimeUnit;
 
 /**
- * Goal which touches a timestamp file.
  *
- * @deprecated Don't use!
  */
-@Mojo( name = "touch", defaultPhase = LifecyclePhase.PROCESS_SOURCES )
-public class MyMojo
-    extends AbstractMojo
+@Mojo( name = "init" )
+public class InitMojo extends AbstractMojo
 {
-    /**
-     * Location of the file.
-     */
-    @Parameter( defaultValue = "${project.build.directory}", property = "outputDir", required = true )
-    private File outputDirectory;
+	@Parameter( defaultValue = "${project}", required = true )
+	private MavenProject project;
 
-    public void execute()
-        throws MojoExecutionException
-    {
-        File f = outputDirectory;
+	@Parameter( defaultValue = "none", property = "ciHost", required = true )
+	private String ciHost;
 
-        if ( !f.exists() )
-        {
-            f.mkdirs();
-        }
+	@Parameter ( property = "identity", required = true )
+	private String identity;
 
-        File touch = new File( f, "touch.txt" );
+	public void execute() throws MojoExecutionException	{
+		if ("none".equals(ciHost)) {
+			try (Scanner s = new Scanner(System.in)){
+				String provider = "aws-ec2";
+				String groupName = project.getGroupId().replaceAll("[^a-zA-Z\\-]", "-") + "-" + project.getArtifactId().replaceAll("[^a-zA-Z\\-]", "-");
 
-        FileWriter w = null;
-        try
-        {
-            w = new FileWriter( touch );
+				getLog().info("Please give aws credential");
+				String credential = s.next();
+				
+				//LoginCredentials login =  getLoginForCommandExecution();
 
-            w.write( "touch.txt" );
-        }
-        catch ( IOException e )
-        {
-            throw new MojoExecutionException( "Error creating file " + touch, e );
-        }
-        finally
-        {
-            if ( w != null )
-            {
-                try
-                {
-                    w.close();
-                }
-                catch ( IOException e )
-                {
-                    // ignore
-                }
-            }
-        }
-    }
-}
+				ComputeService compute = initComputeService(provider, identity, credential);
+
+				System.out.printf(">> adding node to group %s%n", groupName);
+
+				TemplateBuilder templateBuilder = compute.templateBuilder();
+				//templateBuilder = templateBuilder.imageId("us-east-1/ami-d5ddd9bc");
+
+	            Statement bootInstructions = AdminAccess.standard();
+	            templateBuilder.options(runScript(bootInstructions));
+
+				NodeMetadata node = getOnlyElement(compute.createNodesInGroup(groupName, 1, templateBuilder.build()));
+				getLog().info(String.format("<< node %s: %s%n", node.getId(),
+						concat(node.getPrivateAddresses(), node.getPublicAddresses())));
+				getLog().info(String.format("Private key: %s\n", node.getCredentials().getOptionalPrivateKey().or("")));
+				getLog().info(String.format("Identity: %s\n", node.getCredentials().identity));
+
+				getLog().info(String.format("Credential: %s\n", node.getCredentials().credential));
+			} catch (Exception e){
+				throw new MojoExecutionException("" ,e);
+			}
+		}
+		project.getFile();
+	}
+
+	private static ComputeService initComputeService(String provider, String identity, String credential) {
+		// example of specific properties, in this case optimizing image list to
+		// only amazon supplied
+		Properties properties = new Properties();
+		properties.setProperty(PROPERTY_EC2_AMI_QUERY, "owner-id=137112412989;state=available;image-type=machine");
+		properties.setProperty(PROPERTY_EC2_CC_AMI_QUERY, "");
+		long scriptTimeout = TimeUnit.MILLISECONDS.convert(20, TimeUnit.MINUTES);
+		properties.setProperty(TIMEOUT_SCRIPT_COMPLETE, scriptTimeout + "");
+
+		// example of injecting a ssh implementation
+		Iterable<Module> modules = ImmutableSet.<Module> of(
+				new SshjSshClientModule(),
+				new SLF4JLoggingModule(),
+				new EnterpriseConfigurationModule());
+
+		ContextBuilder builder = ContextBuilder.newBuilder(provider)
+				.credentials(identity, credential)
+				.modules(modules)
+				.overrides(properties);
+
+		System.out.printf(">> initializing %s%n", builder.getApiMetadata());
+
+		return builder.buildView(ComputeServiceContext.class).getComputeService();
+	}
+
+	private static LoginCredentials getLoginForCommandExecution() {
+		try {
+			String user = System.getProperty("user.name");
+			String privateKey = Files.toString(
+					new File(System.getProperty("user.home") + "/.ssh/id_rsa"), UTF_8);
+			return LoginCredentials.builder().
+					user(user).privateKey(privateKey).build();
+		} catch (Exception e) {
+			System.err.println("error reading ssh key " + e.getMessage());
+			System.exit(1);
+			return null;
+		}
+	}
+
+	}
