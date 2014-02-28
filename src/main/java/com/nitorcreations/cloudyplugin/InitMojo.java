@@ -13,6 +13,7 @@ import org.jclouds.compute.ComputeServiceContext;
 import org.jclouds.compute.domain.NodeMetadata;
 import org.jclouds.compute.domain.TemplateBuilder;
 import org.jclouds.domain.LoginCredentials;
+import org.jclouds.ec2.compute.options.EC2TemplateOptions;
 import org.jclouds.enterprise.config.EnterpriseConfigurationModule;
 import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 import org.jclouds.scriptbuilder.domain.Statement;
@@ -29,8 +30,10 @@ import static com.google.common.collect.Iterables.getOnlyElement;
 import static org.jclouds.aws.ec2.reference.AWSEC2Constants.PROPERTY_EC2_AMI_QUERY;
 import static org.jclouds.aws.ec2.reference.AWSEC2Constants.PROPERTY_EC2_CC_AMI_QUERY;
 import static org.jclouds.compute.config.ComputeServiceProperties.TIMEOUT_SCRIPT_COMPLETE;
+import static org.jclouds.compute.options.TemplateOptions.Builder.overrideLoginCredentials;
 import static org.jclouds.compute.options.TemplateOptions.Builder.overrideLoginUser;
 import static org.jclouds.compute.options.TemplateOptions.Builder.runScript;
+import static org.jclouds.scriptbuilder.domain.Statements.exec;
 
 import java.io.File;
 import java.util.Properties;
@@ -69,17 +72,17 @@ public class InitMojo extends AbstractMojo
 
 				TemplateBuilder templateBuilder = compute.templateBuilder();
 				//templateBuilder = templateBuilder.imageId("us-east-1/ami-d5ddd9bc");
-
-	            Statement bootInstructions = AdminAccess.standard();
-	            templateBuilder.options(runScript(bootInstructions));
+				Statement bootInstructions = AdminAccess.standard();
+	            templateBuilder.options(EC2TemplateOptions.Builder.inboundPorts(22, 80, 8080).runScript(bootInstructions));
+	            LoginCredentials login =  getLoginForCommandExecution();
 
 				NodeMetadata node = getOnlyElement(compute.createNodesInGroup(groupName, 1, templateBuilder.build()));
 				getLog().info(String.format("<< node %s: %s%n", node.getId(),
 						concat(node.getPrivateAddresses(), node.getPublicAddresses())));
 				getLog().info(String.format("Private key: %s\n", node.getCredentials().getOptionalPrivateKey().or("")));
 				getLog().info(String.format("Identity: %s\n", node.getCredentials().identity));
-
-				getLog().info(String.format("Credential: %s\n", node.getCredentials().credential));
+				compute.runScriptOnNode(node.getId(), exec("yum install -y java-1.7.0-openjdk-devel"), 
+						overrideLoginCredentials(login).runAsRoot(true).wrapInInitScript(false));
 			} catch (Exception e){
 				throw new MojoExecutionException("" ,e);
 			}
