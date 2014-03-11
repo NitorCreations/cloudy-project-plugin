@@ -18,34 +18,29 @@
 
   <dependencies>
     <dependency>
-      <groupId>org.jclouds</groupId>
+      <groupId>org.apache.jclouds</groupId>
       <artifactId>jclouds-compute</artifactId>
-      <version>1.6.0</version>
+      <version>1.8.0-SNAPSHOT</version>
     </dependency>
     <dependency>
-      <groupId>org.jclouds</groupId>
+      <groupId>org.apache.jclouds</groupId>
       <artifactId>jclouds-allcompute</artifactId>
-      <version>1.6.0</version>
+      <version>1.8.0-SNAPSHOT</version>
     </dependency>
     <dependency>
-      <groupId>org.jclouds.labs</groupId>
-      <artifactId>joyentcloud</artifactId>
-      <version>1.6.0</version>
+      <groupId>org.apache.jclouds.driver</groupId>
+      <artifactId>jclouds-jsch</artifactId>
+      <version>1.8.0-SNAPSHOT</version>
     </dependency>
     <dependency>
-      <groupId>org.jclouds.labs</groupId>
-      <artifactId>virtualbox</artifactId>
-      <version>1.6.0</version>
-    </dependency>      
-    <dependency>
-      <groupId>org.jclouds.driver</groupId>
-      <artifactId>jclouds-sshj</artifactId>
-      <version>1.6.0</version>
-    </dependency>
-    <dependency>
-      <groupId>org.jclouds.driver</groupId>
+      <groupId>org.apache.jclouds.driver</groupId>
       <artifactId>jclouds-enterprise</artifactId>
-      <version>1.6.0</version>
+      <version>1.8.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>com.jcraft</groupId>
+      <artifactId>jsch.agentproxy.sshj</artifactId>
+      <version>0.0.7</version>
     </dependency>
     <dependency>
       <groupId>ch.qos.logback</groupId>

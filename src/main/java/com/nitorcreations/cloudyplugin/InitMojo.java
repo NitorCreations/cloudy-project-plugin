@@ -3,7 +3,6 @@ package com.nitorcreations.cloudyplugin;
 
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
-
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
@@ -18,7 +17,7 @@ import org.jclouds.enterprise.config.EnterpriseConfigurationModule;
 import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 import org.jclouds.scriptbuilder.domain.Statement;
 import org.jclouds.scriptbuilder.statements.login.AdminAccess;
-import org.jclouds.sshj.config.SshjSshClientModule;
+import org.jclouds.ssh.jsch.config.JschSshClientModule;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Files;
@@ -31,8 +30,6 @@ import static org.jclouds.aws.ec2.reference.AWSEC2Constants.PROPERTY_EC2_AMI_QUE
 import static org.jclouds.aws.ec2.reference.AWSEC2Constants.PROPERTY_EC2_CC_AMI_QUERY;
 import static org.jclouds.compute.config.ComputeServiceProperties.TIMEOUT_SCRIPT_COMPLETE;
 import static org.jclouds.compute.options.TemplateOptions.Builder.overrideLoginCredentials;
-import static org.jclouds.compute.options.TemplateOptions.Builder.overrideLoginUser;
-import static org.jclouds.compute.options.TemplateOptions.Builder.runScript;
 import static org.jclouds.scriptbuilder.domain.Statements.exec;
 
 import java.io.File;
@@ -101,7 +98,7 @@ public class InitMojo extends AbstractMojo
 
 		// example of injecting a ssh implementation
 		Iterable<Module> modules = ImmutableSet.<Module> of(
-				new SshjSshClientModule(),
+				new JschSshClientModule(),
 				new SLF4JLoggingModule(),
 				new EnterpriseConfigurationModule());
 
@@ -118,10 +115,13 @@ public class InitMojo extends AbstractMojo
 	private static LoginCredentials getLoginForCommandExecution() {
 		try {
 			String user = System.getProperty("user.name");
+			LoginCredentials.Builder builder = LoginCredentials.builder().user(user);
 			String privateKey = Files.toString(
 					new File(System.getProperty("user.home") + "/.ssh/id_rsa"), UTF_8);
-			return LoginCredentials.builder().
-					user(user).privateKey(privateKey).build();
+			if (!privateKey.contains("Proc-Type: 4,ENCRYPTED")) {
+				builder.privateKey(privateKey).build();
+			}
+			return builder.build();
 		} catch (Exception e) {
 			System.err.println("error reading ssh key " + e.getMessage());
 			System.exit(1);
