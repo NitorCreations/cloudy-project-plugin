@@ -6,36 +6,38 @@
   <artifactId>cloudy-project-plugin</artifactId>
   <version>1.0-SNAPSHOT</version>
   <packaging>maven-plugin</packaging>
-
   <name>cloudy-project-plugin Maven Plugin</name>
+  <url>https://github.com/NitorCreations/cloudy-project-plugin</url>
 
-  <!-- FIXME change it to the project's website -->
-  <url>http://maven.apache.org</url>
+  <prerequisites>
+    <maven>2.2.1</maven>
+  </prerequisites>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <jclouds.version>1.7.2-SNAPSHOT</jclouds.version>
   </properties>
 
   <dependencies>
     <dependency>
       <groupId>org.apache.jclouds</groupId>
       <artifactId>jclouds-compute</artifactId>
-      <version>1.8.0-SNAPSHOT</version>
+      <version>${jclouds.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.jclouds</groupId>
       <artifactId>jclouds-allcompute</artifactId>
-      <version>1.8.0-SNAPSHOT</version>
+      <version>${jclouds.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.jclouds.driver</groupId>
       <artifactId>jclouds-jsch</artifactId>
-      <version>1.8.0-SNAPSHOT</version>
+      <version>${jclouds.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.jclouds.driver</groupId>
       <artifactId>jclouds-enterprise</artifactId>
-      <version>1.8.0-SNAPSHOT</version>
+      <version>${jclouds.version}</version>
     </dependency>
     <dependency>
       <groupId>com.jcraft</groupId>
@@ -45,7 +47,7 @@
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
-      <version>1.0.9</version>
+      <version>1.1.1</version>
     </dependency>
     <dependency>
       <groupId>org.apache.maven</groupId>
@@ -66,17 +68,49 @@
     <dependency>
       <groupId>org.codehaus.plexus</groupId>
       <artifactId>plexus-utils</artifactId>
-      <version>3.0.8</version>
+      <version>3.0.17</version>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.8.2</version>
+      <version>4.11</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
 
   <build>
+    <pluginManagement>
+      <plugins>
+	<plugin>
+          <artifactId>maven-clean-plugin</artifactId>
+          <version>2.5</version>
+	</plugin>
+	<plugin>
+          <artifactId>maven-deploy-plugin</artifactId>
+          <version>2.8.1</version>
+	</plugin>
+	<plugin>
+          <artifactId>maven-install-plugin</artifactId>
+          <version>2.5.1</version>
+	</plugin>
+	<plugin>
+          <artifactId>maven-resources-plugin</artifactId>
+          <version>2.6</version>
+	</plugin>
+	<plugin>
+          <artifactId>maven-site-plugin</artifactId>
+          <version>3.3</version>
+	</plugin>
+        <plugin>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>2.17</version>
+        </plugin>
+        <plugin>
+          <artifactId>maven-jar-plugin</artifactId>
+          <version>2.4</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -116,12 +150,11 @@
     <profile>
       <id>run-its</id>
       <build>
-
         <plugins>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-invoker-plugin</artifactId>
-            <version>1.7</version>
+            <version>1.8</version>
             <configuration>
               <debug>true</debug>
               <cloneProjectsTo>${project.build.directory}/it</cloneProjectsTo>
