@@ -8,7 +8,24 @@
   <version>1.0-SNAPSHOT</version>
 
   <description>A simple IT verifying the basic use case.</description>
-
+  <scm>
+    <developerConnection>scm:git:git@github.com:NitorCreations/cloudy-project-plugin.git</developerConnection>
+    <connection>scm:git:git@github.com:NitorCreations/cloudy-project-plugin.git</connection>
+    <tag>HEAD</tag>
+  </scm>
+  <developers>
+    <developer>
+      <id>psiniemi</id>
+      <name>Pasi Niemi</name>
+      <email>pasi.niemi@iki.fi</email>
+      <properties>
+        <useraliases>pasi,p4niemi</useraliases>
+        <provider>aws-ec2</provider>
+        <identity></identity>
+        <credential>{kjkDxVYP74cHTfUPXUCBEK7QG/Me3SdV2cV7bv1QFxKbvB6HqtEO7ppP2xVa+pch5h5ALIPHK49T5OwmQmSQNQ==}</credential>
+      </properties>
+    </developer>
+  </developers>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
@@ -21,6 +38,8 @@
         <version>@project.version@</version>
         <configuration>
           <identity>AKIAIQUE53POBWFEF2ZQ</identity>
+          <provider>aws-ec2</provider>
+          <connectionType>connection</connectionType>
         </configuration>
         <executions>
           <execution>
