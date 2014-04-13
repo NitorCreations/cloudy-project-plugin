@@ -16,20 +16,35 @@ public class TerminateMojo extends AbstractCloudyMojo
 
 	public void execute() throws MojoExecutionException, MojoFailureException	{
 		super.execute();
-		NodeMetadata existingNode = compute.getNodeMetadata(instanceId);
-		if (instanceId == null || existingNode == null || existingNode.getStatus() == NodeMetadata.Status.TERMINATED) {
-			throw new MojoExecutionException("Developernode with tag " + instanceTag + " does not exists with id: " + instanceId);
+		if (instanceId != null) {
+			NodeMetadata existingNode = compute.getNodeMetadata(instanceId);
+			if (existingNode == null || existingNode.getStatus() == NodeMetadata.Status.TERMINATED) {
+				throw new MojoExecutionException("Developernode with tag " + instanceTag + " does not exists with id: " + instanceId);
+			} else {
+				getLog().info("Existing node with tag " + instanceTag + " with id " + instanceId + " found in local configuration.");
+			}
 		} else {
-			getLog().info("Existing node with tag " + instanceTag + " with id " + instanceId + " found in local configuration.");
+			getLog().info("Existing node with tag " + instanceTag + " not found in local configuration.");
+			return;
+		}
+		try  {
+			compute.destroyNode(instanceId);
+		} catch (Throwable e) {
+			getLog().info("Error in deleting node: " + e.getMessage());
+			getLog().debug(e);
 		}
 
 		try (OutputStream out = new FileOutputStream(developerNodeFile)){
-			compute.destroyNode(instanceId);
-			developerNodes.remove(instanceTag);
-			developerNodes.store(out, null);
+			NodeMetadata deletedNode = compute.getNodeMetadata(instanceId);
+			if (deletedNode == null || deletedNode.getStatus() == NodeMetadata.Status.TERMINATED) {
+  			  compute.destroyNode(instanceId);
+			  developerNodes.remove(instanceTag);
+			  developerNodes.store(out, null);
+			} else {
+				throw new MojoExecutionException("Failed to terminate node " + instanceId);
+			}
 		} catch (IOException e) {
 			throw new MojoExecutionException("Failed to store developer node details", e);
 		}
-		project.getFile();
 	}
 }

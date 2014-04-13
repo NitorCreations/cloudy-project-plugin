@@ -21,7 +21,6 @@ import org.jclouds.ContextBuilder;
 import org.jclouds.compute.ComputeService;
 import org.jclouds.compute.ComputeServiceContext;
 import org.jclouds.enterprise.config.EnterpriseConfigurationModule;
-import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 import org.jclouds.ssh.jsch.config.JschSshClientModule;
 import org.sonatype.plexus.components.sec.dispatcher.DefaultSecDispatcher;
 import org.sonatype.plexus.components.sec.dispatcher.SecDispatcher;
@@ -29,6 +28,7 @@ import org.sonatype.plexus.components.sec.dispatcher.SecDispatcherException;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Module;
+import com.nitorcreations.cloudyplugin.loggin.config.MavenLoggingModule;
 
 public class AbstractCloudyMojo extends AbstractMojo {
 
@@ -104,13 +104,13 @@ public class AbstractCloudyMojo extends AbstractMojo {
 				throw new MojoExecutionException("Failed to read developer node data", e);
 			}
 		}
-		
+
 		if (developerNodes.getProperty(instanceTag) != null) {
 			instanceId = developerNodes.getProperty(instanceTag);
 		}
 	}
 
-	private ComputeService initComputeService(String provider, String identity, String credential) throws MojoExecutionException {
+	protected ComputeService initComputeService(String provider, String identity, String credential) throws MojoExecutionException {
 		Properties properties = new Properties();
 		try (InputStream in = getClass().getClassLoader().getResourceAsStream(provider + ".defaultOverrides")) {
 			properties.load(in);
@@ -131,7 +131,7 @@ public class AbstractCloudyMojo extends AbstractMojo {
 
 		Iterable<Module> modules = ImmutableSet.<Module> of(
 				new JschSshClientModule(),
-				new SLF4JLoggingModule(),
+				new MavenLoggingModule(getLog()),
 				new EnterpriseConfigurationModule());
 
 		ContextBuilder builder = ContextBuilder.newBuilder(provider)
@@ -142,5 +142,4 @@ public class AbstractCloudyMojo extends AbstractMojo {
 		ComputeService ret = builder.buildView(ComputeServiceContext.class).getComputeService();
 		return ret;
 	}
-
 }

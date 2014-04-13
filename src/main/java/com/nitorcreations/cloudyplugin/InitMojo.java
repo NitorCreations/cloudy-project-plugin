@@ -47,6 +47,5 @@ public class InitMojo extends AbstractCloudyMojo
 		} catch (IOException e) {
 			throw new MojoExecutionException("Failed to store developer node details", e);
 		}
-		project.getFile();
 	}
 }
