@@ -37,7 +37,6 @@ public class TerminateMojo extends AbstractCloudyMojo
         NodeMetadata deletedNode = compute.getNodeMetadata(instanceId);
         if (deletedNode == null || deletedNode.getStatus() == NodeMetadata.Status.TERMINATED) {
             try (OutputStream out = new FileOutputStream(developerNodeFile)){
-                compute.destroyNode(instanceId);
                 developerNodes.remove(instanceTag);
                 developerNodes.store(out, null);
             } catch (IOException e) {
