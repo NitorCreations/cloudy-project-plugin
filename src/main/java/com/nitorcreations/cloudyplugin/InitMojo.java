@@ -11,7 +11,9 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.jclouds.compute.RunNodesException;
 import org.jclouds.compute.domain.NodeMetadata;
+import org.jclouds.compute.domain.OperatingSystem;
 import org.jclouds.compute.domain.TemplateBuilder;
+import org.jclouds.compute.predicates.OperatingSystemPredicates;
 
 
 @Mojo( name = "init",  aggregator = true )
@@ -38,8 +40,9 @@ public class InitMojo extends AbstractCloudyMojo
 		TemplateCustomizer customizer = resolver.resolveCustomizer(instanceTag, provider, currentDeveloper.getProperties());
 		TemplateBuilder templateBuilder = compute.templateBuilder();
 		customizer.customize(templateBuilder);
+		NodeMetadata node;
 		try (OutputStream out = new FileOutputStream(developerNodeFile)){
-			NodeMetadata node = getOnlyElement(compute.createNodesInGroup(groupName, 1, templateBuilder.build()));
+			node = getOnlyElement(compute.createNodesInGroup(groupName, 1, templateBuilder.build()));
 			developerNodes.put(instanceTag, node.getId());
 			developerNodes.store(out, null);
 		} catch (RunNodesException e) {
@@ -47,5 +50,7 @@ public class InitMojo extends AbstractCloudyMojo
 		} catch (IOException e) {
 			throw new MojoExecutionException("Failed to store developer node details", e);
 		}
+		PackageInstallerBuilder pkg = PackageInstallerBuilder.create(node.getOperatingSystem());
+		
 	}
 }

@@ -77,9 +77,10 @@ public class AbstractCloudyMojo extends AbstractMojo {
 		}
 		if (currentDeveloper == null) {
 			throw new MojoExecutionException("No matching developer entry found. Add a developer entry with id " + developerId + " or the same as 'useralias' property for a developer");
-		} else {
-			getLog().info("Using properties from developer " + currentDeveloper.getId());
-		}
+		} 
+		
+		getLog().info("Using properties from developer " + currentDeveloper.getId());
+		
 		Properties developerProperties = currentDeveloper.getProperties();
 		provider = developerProperties.getProperty("provider");
 		try {
@@ -94,7 +95,7 @@ public class AbstractCloudyMojo extends AbstractMojo {
 			throw new MojoExecutionException("Some provider information missing - provider: '" + provider +
 					"' indetity: '" + identity + "' credential: '" + credential + "'");
 		}
-		compute = initComputeService(provider, identity, credential);
+		compute = initComputeService();
 		File pom = project.getFile();
 		developerNodeFile = new File(pom.getParentFile(), "." + currentDeveloper.getId() + "-nodes");
 		if (developerNodeFile.exists()) {
@@ -110,7 +111,7 @@ public class AbstractCloudyMojo extends AbstractMojo {
 		}
 	}
 
-	protected ComputeService initComputeService(String provider, String identity, String credential) throws MojoExecutionException {
+	protected ComputeService initComputeService() throws MojoExecutionException {
 		Properties properties = new Properties();
 		try (InputStream in = getClass().getClassLoader().getResourceAsStream(provider + ".defaultOverrides")) {
 			properties.load(in);
@@ -142,4 +143,5 @@ public class AbstractCloudyMojo extends AbstractMojo {
 		ComputeService ret = builder.buildView(ComputeServiceContext.class).getComputeService();
 		return ret;
 	}
+	
 }
