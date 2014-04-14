@@ -11,10 +11,10 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.jclouds.compute.RunNodesException;
 import org.jclouds.compute.domain.NodeMetadata;
-import org.jclouds.compute.domain.OperatingSystem;
 import org.jclouds.compute.domain.TemplateBuilder;
-import org.jclouds.compute.predicates.OperatingSystemPredicates;
 
+import static org.jclouds.compute.options.TemplateOptions.Builder.overrideLoginCredentials;
+import static org.jclouds.scriptbuilder.domain.Statements.exec;
 
 @Mojo( name = "init",  aggregator = true )
 public class InitMojo extends AbstractCloudyMojo
@@ -25,16 +25,16 @@ public class InitMojo extends AbstractCloudyMojo
 		this.resolver = new GroovyCustomizerResolver();
 	}
 
-	public void execute() throws MojoExecutionException, MojoFailureException	{
+	@Override
+    public void execute() throws MojoExecutionException, MojoFailureException	{
 		super.execute();
 		String groupName = project.getGroupId().replaceAll("[^a-zA-Z\\-]", "-") + "-" + project.getArtifactId().replaceAll("[^a-zA-Z\\-]", "-");
 		if (instanceId != null) {
 			NodeMetadata existingNode = compute.getNodeMetadata(instanceId);
 			if (existingNode != null && existingNode.getStatus() != NodeMetadata.Status.TERMINATED) {
 				throw new MojoExecutionException("Developernode with tag " + instanceTag + " already exists with id: " + instanceId);
-			} else {
-				getLog().info("Existing node with tag " + instanceTag + " with id " + instanceId + " found in local configuration but not active in the backend service");
-			}
+			} 
+			getLog().info("Existing node with tag " + instanceTag + " with id " + instanceId + " found in local configuration but not active in the backend service");
 		}
 
 		TemplateCustomizer customizer = resolver.resolveCustomizer(instanceTag, provider, currentDeveloper.getProperties());
@@ -50,7 +50,27 @@ public class InitMojo extends AbstractCloudyMojo
 		} catch (IOException e) {
 			throw new MojoExecutionException("Failed to store developer node details", e);
 		}
-		PackageInstallerBuilder pkg = PackageInstallerBuilder.create(node.getOperatingSystem());
 		
+		String preInstallScript = resolveSetting("preinstallscript", null);
+		if (preInstallScript != null && !preInstallScript.isEmpty()) {
+		    try {
+                String content = getResource(preInstallScript);
+                compute.runScriptOnNode(node.getId(), exec(content), 
+                    overrideLoginCredentials(login).runAsRoot(true).wrapInInitScript(false));
+            } catch (IOException e) {
+                throw new MojoExecutionException("Failed to read preinstall script", e);
+            }
+		}
+		PackageInstallerBuilder pkg = PackageInstallerBuilder.create(node.getOperatingSystem());
+		String pkgs = resolveSetting("packages", null);
+		if (pkgs != null && !pkgs.isEmpty()) {
+		    getLog().info("Installing packages " + pkgs);
+		    for (String next : pkgs.split(",")) {
+		        pkg.addPackage(next);
+		    }
+            compute.runScriptOnNode(node.getId(), exec(pkg.build()), 
+                overrideLoginCredentials(login).runAsRoot(true).wrapInInitScript(false));
+		}
+
 	}
 }

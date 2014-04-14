@@ -21,8 +21,10 @@
       <properties>
         <useraliases>pasi,p4niemi</useraliases>
         <provider>aws-ec2</provider>
-        <identity></identity>
+        <identity>{2chcJuSo1xQHpTIXvJleyPnhyjFuEjeD7sOlCkDzil4xWamQpfHmGNXkhF2Rq6Pw}</identity>
         <credential>{kjkDxVYP74cHTfUPXUCBEK7QG/Me3SdV2cV7bv1QFxKbvB6HqtEO7ppP2xVa+pch5h5ALIPHK49T5OwmQmSQNQ==}</credential>
+        <preinstallscript>classpath:/install-jenkins-repo.sh</preinstallscript>
+        <packages>java-1.7.0-openjdk-devel,jenkins</packages>
       </properties>
     </developer>
   </developers>

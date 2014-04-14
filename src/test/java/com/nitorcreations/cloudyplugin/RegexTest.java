@@ -37,5 +37,6 @@ public class RegexTest {
 		assertFalse(p.matcher("pasi,p4ööniemi").find());
 		assertFalse(p.matcher("pasiöö,p4niemi").find());
 	}
+	
 
 }

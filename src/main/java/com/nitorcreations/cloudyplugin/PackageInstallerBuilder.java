@@ -28,8 +28,9 @@ public abstract class PackageInstallerBuilder {
 		return command();
 	}
 	
-	public void addPackage(String pkg) {
+	public PackageInstallerBuilder addPackage(String pkg) {
 	    packages.add(pkg);
+	    return this;
 	}
     
 	protected String command() {

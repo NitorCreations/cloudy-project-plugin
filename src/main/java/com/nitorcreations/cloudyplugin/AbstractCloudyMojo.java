@@ -6,6 +6,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.nio.charset.Charset;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -17,9 +19,11 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
+import org.bouncycastle.util.io.Streams;
 import org.jclouds.ContextBuilder;
 import org.jclouds.compute.ComputeService;
 import org.jclouds.compute.ComputeServiceContext;
+import org.jclouds.domain.LoginCredentials;
 import org.jclouds.enterprise.config.EnterpriseConfigurationModule;
 import org.jclouds.ssh.jsch.config.JschSshClientModule;
 import org.sonatype.plexus.components.sec.dispatcher.DefaultSecDispatcher;
@@ -27,6 +31,7 @@ import org.sonatype.plexus.components.sec.dispatcher.SecDispatcher;
 import org.sonatype.plexus.components.sec.dispatcher.SecDispatcherException;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.io.Files;
 import com.google.inject.Module;
 import com.nitorcreations.cloudyplugin.loggin.config.MavenLoggingModule;
 
@@ -44,6 +49,9 @@ public class AbstractCloudyMojo extends AbstractMojo {
 	@Parameter( defaultValue = "default", property = "instanceTag", required = true )
 	protected String instanceTag;
 
+	@Parameter( property = "packages", required = false )
+    protected String packages;
+
 	@Component
     private SecDispatcher securityDispatcher;
 
@@ -53,6 +61,7 @@ public class AbstractCloudyMojo extends AbstractMojo {
 	protected String credential;
 	protected String instanceId;
 	protected ComputeService compute;
+	protected LoginCredentials login;
 	protected Properties developerNodes = new Properties();
 	protected File developerNodeFile;
 
@@ -61,8 +70,10 @@ public class AbstractCloudyMojo extends AbstractMojo {
 		if (securityDispatcher instanceof DefaultSecDispatcher) {
 			((DefaultSecDispatcher)securityDispatcher).setConfigurationFile(securityConfiguration);
 		}
+		String user = System.getProperty("user.name", "");
+		login = LoginCredentials.builder().user(user).build();
 		if (developerId == null) {
-			developerId = System.getProperty("user.name", "");
+			developerId = user;
 		}
 		if (developerId.isEmpty()) {
 			throw new MojoExecutionException("Failed to get a developer id. Please define one with -DdeveloperId=foo");
@@ -144,4 +155,35 @@ public class AbstractCloudyMojo extends AbstractMojo {
 		return ret;
 	}
 	
+	protected String resolveSetting(String name, String defaultValue) {
+	    if (currentDeveloper.getProperties().getProperty(instanceTag + "-" + name) != null) {
+	        return currentDeveloper.getProperties().getProperty(instanceTag + "-" + name);
+	    } 
+	    if (currentDeveloper.getProperties().getProperty(name) != null) {
+	        return currentDeveloper.getProperties().getProperty(name);
+	    }
+        try {
+            Field field = getClass().getField(name);
+            Object value = field.get(this);
+            if (value != null) return value.toString();
+        } catch (IllegalAccessException | NoSuchFieldException | SecurityException | IllegalArgumentException e) {
+            // Oh well...
+        }
+        return defaultValue;
+	}
+
+    public static String getResource(String resource) throws IOException {
+    	if (resource.startsWith("classpath:")) {
+    	    String res = resource.substring(10);
+    	    if (!res.startsWith("/")) {
+    	        res = "/" + res;
+    	    }
+    		try (InputStream in = AbstractCloudyMojo.class.getResourceAsStream(res)) {
+    		    if (in == null) throw new IOException("Classpath resource " + resource + " not found");
+    		    return new String(Streams.readAll(in), Charset.forName("UTF-8"));
+    		}
+    	}
+    	return Files.toString(new File(resource), Charset.forName("UTF-8"));
+    }
+
 }
