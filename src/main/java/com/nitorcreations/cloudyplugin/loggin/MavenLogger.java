@@ -18,7 +18,8 @@ public class MavenLogger extends BaseLogger {
 			this.logger = logger;
 		}
 
-		public Logger getLogger(String category) {
+		@Override
+        public Logger getLogger(String category) {
 			return new MavenLogger(category, logger);
 		}
 	}
@@ -33,7 +34,8 @@ public class MavenLogger extends BaseLogger {
 		logger.debug(message);
 	}
 
-	public boolean isTraceEnabled() {
+	@Override
+    public boolean isTraceEnabled() {
 		return logger.isDebugEnabled();
 	}
 
@@ -42,7 +44,8 @@ public class MavenLogger extends BaseLogger {
 		logger.debug(message);
 	}
 
-	public boolean isDebugEnabled() {
+	@Override
+    public boolean isDebugEnabled() {
 		return logger.isDebugEnabled();
 	}
 
@@ -51,7 +54,8 @@ public class MavenLogger extends BaseLogger {
 		logger.info(message);
 	}
 
-	public boolean isInfoEnabled() {
+	@Override
+    public boolean isInfoEnabled() {
 		return logger.isInfoEnabled();
 	}
 
@@ -65,7 +69,8 @@ public class MavenLogger extends BaseLogger {
 		logger.warn(message, e);
 	}
 
-	public boolean isWarnEnabled() {
+	@Override
+    public boolean isWarnEnabled() {
 		return logger.isWarnEnabled();
 	}
 
@@ -79,11 +84,13 @@ public class MavenLogger extends BaseLogger {
 		logger.error(message, e);
 	}
 
-	public boolean isErrorEnabled() {
+	@Override
+    public boolean isErrorEnabled() {
 		return logger.isWarnEnabled();
 	}
 
-	public String getCategory() {
+	@Override
+    public String getCategory() {
 		return category;
 	}
 }

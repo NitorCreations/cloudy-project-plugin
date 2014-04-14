@@ -14,15 +14,15 @@ import org.jclouds.compute.domain.NodeMetadata;
 public class TerminateMojo extends AbstractCloudyMojo
 {
 
-	public void execute() throws MojoExecutionException, MojoFailureException	{
+	@Override
+    public void execute() throws MojoExecutionException, MojoFailureException	{
 		super.execute();
 		if (instanceId != null) {
 			NodeMetadata existingNode = compute.getNodeMetadata(instanceId);
 			if (existingNode == null || existingNode.getStatus() == NodeMetadata.Status.TERMINATED) {
 				throw new MojoExecutionException("Developernode with tag " + instanceTag + " does not exists with id: " + instanceId);
-			} else {
-				getLog().info("Existing node with tag " + instanceTag + " with id " + instanceId + " found in local configuration.");
-			}
+			}	
+			getLog().info("Existing node with tag " + instanceTag + " with id " + instanceId + " found in local configuration.");
 		} else {
 			getLog().info("Existing node with tag " + instanceTag + " not found in local configuration.");
 			return;
@@ -34,17 +34,17 @@ public class TerminateMojo extends AbstractCloudyMojo
 			getLog().debug(e);
 		}
 
-		try (OutputStream out = new FileOutputStream(developerNodeFile)){
-			NodeMetadata deletedNode = compute.getNodeMetadata(instanceId);
-			if (deletedNode == null || deletedNode.getStatus() == NodeMetadata.Status.TERMINATED) {
-  			  compute.destroyNode(instanceId);
-			  developerNodes.remove(instanceTag);
-			  developerNodes.store(out, null);
-			} else {
-				throw new MojoExecutionException("Failed to terminate node " + instanceId);
-			}
-		} catch (IOException e) {
-			throw new MojoExecutionException("Failed to store developer node details", e);
-		}
+        NodeMetadata deletedNode = compute.getNodeMetadata(instanceId);
+        if (deletedNode == null || deletedNode.getStatus() == NodeMetadata.Status.TERMINATED) {
+            try (OutputStream out = new FileOutputStream(developerNodeFile)){
+                compute.destroyNode(instanceId);
+                developerNodes.remove(instanceTag);
+                developerNodes.store(out, null);
+            } catch (IOException e) {
+                throw new MojoExecutionException("Failed to store developer node details", e);
+            }
+        } else {
+            throw new MojoExecutionException("Failed to terminate node " + instanceId);
+        }
 	}
 }
