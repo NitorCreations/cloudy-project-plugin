@@ -1,2 +1,2 @@
-cloudy-project-plugin
+cloudy-plugin
 =====================

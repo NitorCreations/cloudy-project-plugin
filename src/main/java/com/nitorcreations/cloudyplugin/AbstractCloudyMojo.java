@@ -1,6 +1,8 @@
 package com.nitorcreations.cloudyplugin;
 
 import static org.jclouds.compute.config.ComputeServiceProperties.TIMEOUT_SCRIPT_COMPLETE;
+import static org.jclouds.compute.options.TemplateOptions.Builder.overrideLoginCredentials;
+import static org.jclouds.scriptbuilder.domain.Statements.exec;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -8,6 +10,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -53,6 +58,9 @@ public class AbstractCloudyMojo extends AbstractMojo {
 
 	@Parameter( property = "packages", required = false )
     protected String packages;
+
+	@Parameter( property = "properties", required = false )
+    protected Map<String, String> properties;
 
 	@Component
     private SecDispatcher securityDispatcher;
@@ -126,23 +134,23 @@ public class AbstractCloudyMojo extends AbstractMojo {
 	}
 
 	protected ComputeService initComputeService() throws MojoExecutionException {
-		Properties properties = new Properties();
+		Properties overrideProperties = new Properties();
 		try (InputStream in = getClass().getClassLoader().getResourceAsStream(provider + ".defaultOverrides")) {
-			properties.load(in);
+			overrideProperties.load(in);
 		} catch (IOException e) {
 			throw new MojoExecutionException("Failed to read provider default overrides", e);
 		}
-
-		if (currentDeveloper.getProperties().getProperty(instanceTag + "-overrides") != null) {
-			try (InputStream in = new FileInputStream(currentDeveloper.getProperties().getProperty(instanceTag + "-overrides"))) {
-				properties.load(in);
-			} catch (IOException e) {
-				throw new MojoExecutionException("Failed to read overrides for instance tag " + instanceTag, e);
-			}
+		List<String> otherOverrides = resolveAllSettings("overrides");
+		for (int i = otherOverrides.size() -1; i>=0; i--) {
+            try (InputStream in = new FileInputStream(otherOverrides.get(i))) {
+                overrideProperties.load(in);
+            } catch (IOException e) {
+                throw new MojoExecutionException("Failed to read overrides for instance tag " + instanceTag, e);
+            }
 		}
 
 		long scriptTimeout = TimeUnit.MILLISECONDS.convert(20, TimeUnit.MINUTES);
-		properties.setProperty(TIMEOUT_SCRIPT_COMPLETE, scriptTimeout + "");
+		overrideProperties.setProperty(TIMEOUT_SCRIPT_COMPLETE, scriptTimeout + "");
 
 		Iterable<Module> modules = ImmutableSet.<Module> of(
 				new JschSshClientModule(),
@@ -152,26 +160,47 @@ public class AbstractCloudyMojo extends AbstractMojo {
 		ContextBuilder builder = ContextBuilder.newBuilder(provider)
 				.credentials(identity, credential)
 				.modules(modules)
-				.overrides(properties);
+				.overrides(overrideProperties);
 		context = builder.buildView(ComputeServiceContext.class);
 		return context.getComputeService();
 	}
-	
-	protected String resolveSetting(String name, String defaultValue) {
-	    if (currentDeveloper.getProperties().getProperty(instanceTag + "-" + name) != null) {
-	        return currentDeveloper.getProperties().getProperty(instanceTag + "-" + name);
-	    } 
-	    if (currentDeveloper.getProperties().getProperty(name) != null) {
-	        return currentDeveloper.getProperties().getProperty(name);
-	    }
+
+	protected List<String> resolveAllSettings(String name) {
+	    ArrayList<String> ret = new ArrayList<>();
+        if (currentDeveloper.getProperties().getProperty(instanceTag + "-" + name) != null) {
+            ret.add(currentDeveloper.getProperties().getProperty(instanceTag + "-" + name));
+        }
+        if (currentDeveloper.getProperties().getProperty(provider + "-" + name) != null) {
+            ret.add(currentDeveloper.getProperties().getProperty(provider + "-" + name));
+        }
+        if (currentDeveloper.getProperties().getProperty(name) != null) {
+            ret.add(currentDeveloper.getProperties().getProperty(name));
+        }
         try {
             Field field = getClass().getField(name);
             Object value = field.get(this);
-            if (value != null) return value.toString();
+            if (value != null) ret.add(value.toString());
         } catch (IllegalAccessException | NoSuchFieldException | SecurityException | IllegalArgumentException e) {
             // Oh well...
         }
-        return defaultValue;
+        if (properties != null && properties.get(instanceTag + "-" + name) != null) {
+            ret.add(properties.get(instanceTag + "-" + name));
+        }
+        if (properties != null && properties.get(provider + "-" + name) != null) {
+            ret.add(properties.get(provider + "-" + name));
+        }
+        if (properties != null && properties.get(name) != null) {
+            ret.add(properties.get(name));
+        }
+        return ret;
+	}
+
+	protected String resolveSetting(String name, String defaultValue) {
+	    List<String> ret = resolveAllSettings(name);
+	    if (ret.size() != 0) {
+	        return ret.get(0);
+	    }
+	    return defaultValue;
 	}
 
     public static String getResource(String resource) throws IOException {
@@ -187,7 +216,7 @@ public class AbstractCloudyMojo extends AbstractMojo {
     	}
     	return Files.toString(new File(resource), Charset.forName("UTF-8"));
     }
-    
+
     protected boolean waitForStatus(String nodeId, Status status, long timeout) {
         long end = System.currentTimeMillis() + timeout;
         while (System.currentTimeMillis() < end) {
@@ -198,5 +227,32 @@ public class AbstractCloudyMojo extends AbstractMojo {
             }
         }
         return false;
+    }
+
+    protected void runConfiguredScript(String parameterName) throws MojoExecutionException {
+        String scriptResource = resolveSetting(parameterName, null);
+        if (scriptResource != null && !scriptResource.isEmpty()) {
+            try {
+                String content = getResource(scriptResource);
+                compute.runScriptOnNode(instanceId, exec(content),
+                    overrideLoginCredentials(login).runAsRoot(true).wrapInInitScript(false));
+            } catch (Throwable e) {
+                throw new MojoExecutionException("Failed to run " + parameterName, e);
+            }
+        }
+    }
+
+    protected void installPackages(String packageList) {
+        if (packageList == null || packageList.isEmpty()) {
+            return;
+        }
+        NodeMetadata node = compute.getNodeMetadata(instanceId);
+        PackageInstallerBuilder pkg = PackageInstallerBuilder.create(node.getOperatingSystem());
+        getLog().info("Installing packages " + packageList);
+        for (String next : packageList.split(",")) {
+            pkg.addPackage(next);
+        }
+        compute.runScriptOnNode(instanceId, exec(pkg.build()),
+            overrideLoginCredentials(login).runAsRoot(true).wrapInInitScript(false));
     }
 }

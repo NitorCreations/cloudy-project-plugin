@@ -3,10 +3,10 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.nitorcreations</groupId>
-  <artifactId>cloudy-project-plugin</artifactId>
+  <artifactId>cloudy-plugin</artifactId>
   <version>1.0-SNAPSHOT</version>
   <packaging>maven-plugin</packaging>
-  <name>cloudy-project-plugin Maven Plugin</name>
+  <name>Cloudy Maven Plugin</name>
   <url>https://github.com/NitorCreations/cloudy-project-plugin</url>
 
   <prerequisites>
@@ -128,7 +128,7 @@
         <artifactId>maven-plugin-plugin</artifactId>
         <version>${maven.plugin.version}</version>
         <configuration>
-          <goalPrefix>cloudy-project</goalPrefix>
+          <goalPrefix>cloudy</goalPrefix>
           <skipErrorNoDescriptorsFound>true</skipErrorNoDescriptorsFound>
         </configuration>
         <executions>

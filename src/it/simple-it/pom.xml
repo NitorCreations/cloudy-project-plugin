@@ -39,7 +39,6 @@
         <artifactId>@project.artifactId@</artifactId>
         <version>@project.version@</version>
         <configuration>
-          <identity>AKIAIQUE53POBWFEF2ZQ</identity>
           <provider>aws-ec2</provider>
           <connectionType>connection</connectionType>
         </configuration>
@@ -49,6 +48,7 @@
             <phase>validate</phase>
             <goals>
               <goal>init</goal>
+              <goal>terminate</goal>
             </goals>
           </execution>
         </executions>

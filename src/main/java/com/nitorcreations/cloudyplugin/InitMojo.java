@@ -13,9 +13,6 @@ import org.jclouds.compute.RunNodesException;
 import org.jclouds.compute.domain.NodeMetadata;
 import org.jclouds.compute.domain.TemplateBuilder;
 
-import static org.jclouds.compute.options.TemplateOptions.Builder.overrideLoginCredentials;
-import static org.jclouds.scriptbuilder.domain.Statements.exec;
-
 @Mojo( name = "init",  aggregator = true )
 public class InitMojo extends AbstractCloudyMojo
 {
@@ -51,26 +48,8 @@ public class InitMojo extends AbstractCloudyMojo
 			throw new MojoExecutionException("Failed to store developer node details", e);
 		}
 		
-		String preInstallScript = resolveSetting("preinstallscript", null);
-		if (preInstallScript != null && !preInstallScript.isEmpty()) {
-		    try {
-                String content = getResource(preInstallScript);
-                compute.runScriptOnNode(node.getId(), exec(content), 
-                    overrideLoginCredentials(login).runAsRoot(true).wrapInInitScript(false));
-            } catch (IOException e) {
-                throw new MojoExecutionException("Failed to read preinstall script", e);
-            }
-		}
-		PackageInstallerBuilder pkg = PackageInstallerBuilder.create(node.getOperatingSystem());
-		String pkgs = resolveSetting("packages", null);
-		if (pkgs != null && !pkgs.isEmpty()) {
-		    getLog().info("Installing packages " + pkgs);
-		    for (String next : pkgs.split(",")) {
-		        pkg.addPackage(next);
-		    }
-            compute.runScriptOnNode(node.getId(), exec(pkg.build()), 
-                overrideLoginCredentials(login).runAsRoot(true).wrapInInitScript(false));
-		}
-
+		runConfiguredScript("preinstallscript");
+		installPackages(resolveSetting("packages", null));
+        runConfiguredScript("postinstallscript");
 	}
 }
