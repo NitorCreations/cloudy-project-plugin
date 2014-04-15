@@ -23,6 +23,8 @@ import org.bouncycastle.util.io.Streams;
 import org.jclouds.ContextBuilder;
 import org.jclouds.compute.ComputeService;
 import org.jclouds.compute.ComputeServiceContext;
+import org.jclouds.compute.domain.NodeMetadata;
+import org.jclouds.compute.domain.NodeMetadata.Status;
 import org.jclouds.domain.LoginCredentials;
 import org.jclouds.enterprise.config.EnterpriseConfigurationModule;
 import org.jclouds.ssh.jsch.config.JschSshClientModule;
@@ -60,6 +62,7 @@ public class AbstractCloudyMojo extends AbstractMojo {
 	protected String identity;
 	protected String credential;
 	protected String instanceId;
+    protected ComputeServiceContext context;
 	protected ComputeService compute;
 	protected LoginCredentials login;
 	protected Properties developerNodes = new Properties();
@@ -150,9 +153,8 @@ public class AbstractCloudyMojo extends AbstractMojo {
 				.credentials(identity, credential)
 				.modules(modules)
 				.overrides(properties);
-
-		ComputeService ret = builder.buildView(ComputeServiceContext.class).getComputeService();
-		return ret;
+		context = builder.buildView(ComputeServiceContext.class);
+		return context.getComputeService();
 	}
 	
 	protected String resolveSetting(String name, String defaultValue) {
@@ -185,5 +187,16 @@ public class AbstractCloudyMojo extends AbstractMojo {
     	}
     	return Files.toString(new File(resource), Charset.forName("UTF-8"));
     }
-
+    
+    protected boolean waitForStatus(String nodeId, Status status, long timeout) {
+        long end = System.currentTimeMillis() + timeout;
+        while (System.currentTimeMillis() < end) {
+            NodeMetadata state = compute.getNodeMetadata(nodeId); 
+            if ((state == null && status == Status.TERMINATED) ||
+                (state != null && state.getStatus() == status)       ) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
