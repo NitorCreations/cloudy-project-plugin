@@ -40,7 +40,7 @@ import org.sonatype.plexus.components.sec.dispatcher.SecDispatcherException;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Files;
 import com.google.inject.Module;
-import com.nitorcreations.cloudyplugin.loggin.config.MavenLoggingModule;
+import com.nitorcreations.cloudyplugin.logging.config.MavenLoggingModule;
 
 public class AbstractCloudyMojo extends AbstractMojo {
 

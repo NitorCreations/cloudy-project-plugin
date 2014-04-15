@@ -1,10 +1,10 @@
-package com.nitorcreations.cloudyplugin.loggin.config;
+package com.nitorcreations.cloudyplugin.logging.config;
 
 import org.apache.maven.plugin.logging.Log;
 import org.jclouds.logging.Logger.LoggerFactory;
 import org.jclouds.logging.config.LoggingModule;
 
-import com.nitorcreations.cloudyplugin.loggin.MavenLogger.MavenLoggerFactory;
+import com.nitorcreations.cloudyplugin.logging.MavenLogger.MavenLoggerFactory;
 
 public class MavenLoggingModule  extends LoggingModule{
 

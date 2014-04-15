@@ -1,4 +1,4 @@
-package com.nitorcreations.cloudyplugin.loggin;
+package com.nitorcreations.cloudyplugin.logging;
 
 
 import org.apache.maven.plugin.logging.Log;
