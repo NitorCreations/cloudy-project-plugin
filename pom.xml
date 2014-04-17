@@ -8,18 +8,41 @@
   <packaging>maven-plugin</packaging>
   <name>Cloudy Maven Plugin</name>
   <url>https://github.com/NitorCreations/cloudy-project-plugin</url>
-
+  <parent>
+    <groupId>org.sonatype.oss</groupId>
+    <artifactId>oss-parent</artifactId>
+    <version>7</version>
+  </parent>
   <prerequisites>
     <maven>3.0.5</maven>
   </prerequisites>
-
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <jclouds.version>1.7.2-SNAPSHOT</jclouds.version>
     <maven.version>3.0.5</maven.version>
     <maven.plugin.version>3.2</maven.plugin.version>
+    <targetJdk>1.7</targetJdk>
   </properties>
-
+  <scm>
+    <developerConnection>scm:git:git@github.com:NitorCreations/cloudy-project-plugin.git</developerConnection>
+    <connection>scm:git:git@github.com:NitorCreations/cloudy-project-plugin.git</connection>
+    <tag>HEAD</tag>
+  </scm>
+  <developers>
+    <developer>
+      <id>psiniemi</id>
+      <name>Pasi Niemi</name>
+      <email>pasi.niemi@nitorcreations.com</email>
+      <url>http://www.linkedin.com/in/psiniemi</url>
+    </developer>
+  </developers>
+  <licenses>
+    <license>
+      <name>The Apache Software License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
   <dependencies>
     <dependency>
       <groupId>com.google.guava</groupId>
