@@ -59,7 +59,13 @@ public class AbstractCloudyMojo extends AbstractMojo {
 	@Parameter( property = "packages", required = false )
     protected String packages;
 
-	@Parameter( property = "properties", required = false )
+    @Parameter( property = "preinstallscript", required = false )
+    protected String preinstallscript;
+
+    @Parameter( property = "postinstallscript", required = false )
+    protected String postinstallscript;
+
+    @Parameter( property = "properties", required = false )
     protected Map<String, String> properties;
 
 	@Component

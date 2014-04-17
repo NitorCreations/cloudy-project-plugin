@@ -40,7 +40,8 @@ public class InitMojo extends AbstractCloudyMojo
 		NodeMetadata node;
 		try (OutputStream out = new FileOutputStream(developerNodeFile)){
 			node = getOnlyElement(compute.createNodesInGroup(groupName, 1, templateBuilder.build()));
-			developerNodes.put(instanceTag, node.getId());
+			instanceId = node.getId();
+			developerNodes.put(instanceTag, instanceId);
 			developerNodes.store(out, null);
 		} catch (RunNodesException e) {
 			throw new MojoExecutionException("Failed to create node", e);
