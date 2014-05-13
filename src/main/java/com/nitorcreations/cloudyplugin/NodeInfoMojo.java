@@ -5,33 +5,49 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.jclouds.compute.domain.NodeMetadata;
 
+@Mojo(name = "nodeinfo", aggregator = true)
+public class NodeInfoMojo extends AbstractCloudyMojo {
+    @Override
+    public void execute() throws MojoExecutionException, MojoFailureException {
+        super.execute();
+        if (instanceId != null) {
+            NodeMetadata existingNode = compute.getNodeMetadata(instanceId);
+            if (existingNode == null || existingNode.getStatus() == NodeMetadata.Status.TERMINATED) {
+                throw new MojoExecutionException("Developernode with tag " + instanceTag + " does not exists with id: " + instanceId);
+            }
+            getLog().info("Existing node with tag " + instanceTag + " with id " + instanceId + " found in local configuration.");
+            if (getLog().isInfoEnabled()) {
+                getLog().info(prettyPrint(existingNode.toString()));
+            } else {
+                System.out.print(prettyPrint(existingNode.toString()));
+            }
+        } else {
+            throw new MojoExecutionException("Existing node with tag " + instanceTag + " not found in local configuration.");
+        }
+    }
 
-@Mojo( name = "reboot",  aggregator = true )
-public class NodeInfoMojo extends AbstractCloudyMojo
-{
+    private String prettyPrint(final String nodeInfo) {
+        StringBuilder ret = new StringBuilder();
+        int level = 0;
+        for (String next : nodeInfo.split(",\\s")) {
+            for (int i = 0; i < level; i++) {
+                ret.append("   ");
+            }
+            int levelUps = occurrances(next, '{');
+            int levelDowns = occurrances(next, '}');
+            level = level + levelUps - levelDowns;
+            ret.append(next).append("\n");
+        }
+        return ret.toString();
+    }
 
-	@Override
-    public void execute() throws MojoExecutionException, MojoFailureException	{
-		super.execute();
-		if (instanceId != null) {
-			NodeMetadata existingNode = compute.getNodeMetadata(instanceId);
-			if (existingNode == null || existingNode.getStatus() == NodeMetadata.Status.TERMINATED) {
-				throw new MojoExecutionException("Developernode with tag " + instanceTag + " does not exists with id: " + instanceId);
-			}
-			getLog().info("Existing node with tag " + instanceTag + " with id " + instanceId + " found in local configuration.");
-		} else {
-			throw new MojoExecutionException("Existing node with tag " + instanceTag + " not found in local configuration.");
-		}
-		try  {
-			compute.rebootNode(instanceId);
-		} catch (Throwable e) {
-			getLog().info("Error in suspending node: " + e.getMessage());
-			getLog().debug(e);
-		}
-
-		NodeMetadata rebootedNode = compute.getNodeMetadata(instanceId);
-		if (rebootedNode == null || rebootedNode.getStatus() != NodeMetadata.Status.RUNNING) {
-			throw new MojoExecutionException("Failed to suspend node " + instanceId);
-		}
-	}
+    private int occurrances(final String next, final char find) {
+        int ret = 0;
+        for (int i = 0; i < next.length(); i++) {
+            if (next.charAt(i) == find) {
+                ret++;
+            }
+        }
+        return ret;
+    }
 }
