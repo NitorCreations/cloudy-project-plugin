@@ -64,6 +64,8 @@ public class AbstractCloudyMojo extends AbstractMojo {
     protected String postinstallscript;
     @Parameter(property = "properties", required = false)
     protected Map<String, String> properties;
+    @Parameter(property = "ensureRunning", required = false)
+    protected boolean ensureRunning = false;
     @Component
     private SecDispatcher securityDispatcher;
     protected Developer currentDeveloper;
@@ -126,6 +128,23 @@ public class AbstractCloudyMojo extends AbstractMojo {
         }
         if (developerNodes.getProperty(instanceTag) != null) {
             instanceId = developerNodes.getProperty(instanceTag);
+        }
+        if (ensureRunning) {
+            if (instanceId == null) {
+                initNode();
+            } else {
+                NodeMetadata existingNode = compute.getNodeMetadata(instanceId);
+                if (existingNode == null || existingNode.getStatus() == NodeMetadata.Status.TERMINATED) {
+                    initNode();
+                } else {
+                    getLog().info("Existing node with tag " + instanceTag + " with id " + instanceId + " found in local configuration.");
+                    if (existingNode.getStatus() == NodeMetadata.Status.SUSPENDED) {
+                        resumeNode();
+                    } else if (existingNode.getStatus() != NodeMetadata.Status.RUNNING) {
+                        throw new MojoExecutionException("Instance " + instanceId + " in erronous state: " + existingNode.getStatus());
+                    }
+                }
+            }
         }
     }
 
