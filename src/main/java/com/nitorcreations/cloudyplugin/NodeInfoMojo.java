@@ -25,29 +25,4 @@ public class NodeInfoMojo extends AbstractCloudyMojo {
             throw new MojoExecutionException("Existing node with tag " + instanceTag + " not found in local configuration.");
         }
     }
-
-    private String prettyPrint(final String nodeInfo) {
-        StringBuilder ret = new StringBuilder();
-        int level = 0;
-        for (String next : nodeInfo.split(",\\s")) {
-            for (int i = 0; i < level; i++) {
-                ret.append("   ");
-            }
-            int levelUps = occurrances(next, '{');
-            int levelDowns = occurrances(next, '}');
-            level = level + levelUps - levelDowns;
-            ret.append(next).append("\n");
-        }
-        return ret.toString();
-    }
-
-    private int occurrances(final String next, final char find) {
-        int ret = 0;
-        for (int i = 0; i < next.length(); i++) {
-            if (next.charAt(i) == find) {
-                ret++;
-            }
-        }
-        return ret;
-    }
 }

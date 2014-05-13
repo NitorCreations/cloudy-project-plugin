@@ -19,15 +19,6 @@ public class ResumeMojo extends AbstractCloudyMojo {
         } else {
             throw new MojoExecutionException("Existing node with tag " + instanceTag + " not found in local configuration.");
         }
-        try {
-            compute.resumeNode(instanceId);
-        } catch (Throwable e) {
-            getLog().info("Error in resuming node: " + e.getMessage());
-            getLog().debug(e);
-        }
-        NodeMetadata suspendedNode = compute.getNodeMetadata(instanceId);
-        if (suspendedNode == null || suspendedNode.getStatus() != NodeMetadata.Status.RUNNING) {
-            throw new MojoExecutionException("Failed to resume node " + instanceId);
-        }
+        resumeNode();
     }
 }

@@ -1,13 +1,16 @@
 package com.nitorcreations.cloudyplugin;
 
+import static com.google.common.collect.Iterables.getOnlyElement;
 import static org.jclouds.compute.config.ComputeServiceProperties.TIMEOUT_SCRIPT_COMPLETE;
 import static org.jclouds.compute.options.TemplateOptions.Builder.overrideLoginCredentials;
 import static org.jclouds.scriptbuilder.domain.Statements.exec;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -28,8 +31,10 @@ import org.bouncycastle.util.io.Streams;
 import org.jclouds.ContextBuilder;
 import org.jclouds.compute.ComputeService;
 import org.jclouds.compute.ComputeServiceContext;
+import org.jclouds.compute.RunNodesException;
 import org.jclouds.compute.domain.NodeMetadata;
 import org.jclouds.compute.domain.NodeMetadata.Status;
+import org.jclouds.compute.domain.TemplateBuilder;
 import org.jclouds.domain.LoginCredentials;
 import org.jclouds.enterprise.config.EnterpriseConfigurationModule;
 import org.jclouds.ssh.jsch.config.JschSshClientModule;
@@ -71,6 +76,7 @@ public class AbstractCloudyMojo extends AbstractMojo {
     protected LoginCredentials login;
     protected Properties developerNodes = new Properties();
     protected File developerNodeFile;
+    protected final CustomizerResolver resolver = new GroovyCustomizerResolver();
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -160,8 +166,9 @@ public class AbstractCloudyMojo extends AbstractMojo {
         try {
             Field field = getClass().getField(name);
             Object value = field.get(this);
-            if (value != null)
+            if (value != null) {
                 ret.add(value.toString());
+            }
         } catch (IllegalAccessException | NoSuchFieldException | SecurityException | IllegalArgumentException e) {
             // Oh well...
         }
@@ -192,8 +199,9 @@ public class AbstractCloudyMojo extends AbstractMojo {
                 res = "/" + res;
             }
             try (InputStream in = AbstractCloudyMojo.class.getResourceAsStream(res)) {
-                if (in == null)
+                if (in == null) {
                     throw new IOException("Classpath resource " + resource + " not found");
+                }
                 return new String(Streams.readAll(in), Charset.forName("UTF-8"));
             }
         }
@@ -234,5 +242,72 @@ public class AbstractCloudyMojo extends AbstractMojo {
             pkg.addPackage(next);
         }
         compute.runScriptOnNode(instanceId, exec(pkg.build()), overrideLoginCredentials(login).runAsRoot(true).wrapInInitScript(false));
+    }
+
+    protected String prettyPrint(final String nodeInfo) {
+        StringBuilder ret = new StringBuilder();
+        int level = 0;
+        for (String next : nodeInfo.split(",\\s")) {
+            for (int i = 0; i < level; i++) {
+                ret.append("   ");
+            }
+            int levelUps = occurrances(next, '{');
+            int levelDowns = occurrances(next, '}');
+            level = level + levelUps - levelDowns;
+            ret.append(next).append("\n");
+        }
+        return ret.toString();
+    }
+
+    private int occurrances(final String next, final char find) {
+        int ret = 0;
+        for (int i = 0; i < next.length(); i++) {
+            if (next.charAt(i) == find) {
+                ret++;
+            }
+        }
+        return ret;
+    }
+
+    protected void initNode() throws MojoExecutionException {
+        String groupName = project.getGroupId().replaceAll("[^a-zA-Z\\-]", "-") + "-" + project.getArtifactId().replaceAll("[^a-zA-Z\\-]", "-");
+        if (instanceId != null) {
+            NodeMetadata existingNode = compute.getNodeMetadata(instanceId);
+            if (existingNode != null && existingNode.getStatus() != NodeMetadata.Status.TERMINATED) {
+                throw new MojoExecutionException("Developernode with tag " + instanceTag + " already exists with id: " + instanceId);
+            }
+            getLog().info("Existing node with tag " + instanceTag + " with id " + instanceId + " found in local configuration but not active in the backend service");
+        }
+        TemplateCustomizer customizer = resolver.resolveCustomizer(instanceTag, provider, currentDeveloper.getProperties());
+        TemplateBuilder templateBuilder = compute.templateBuilder();
+        customizer.customize(templateBuilder);
+        NodeMetadata node;
+        try (OutputStream out = new FileOutputStream(developerNodeFile)) {
+            node = getOnlyElement(compute.createNodesInGroup(groupName, 1, templateBuilder.build()));
+            instanceId = node.getId();
+            developerNodes.put(instanceTag, instanceId);
+            developerNodes.store(out, null);
+        } catch (RunNodesException e) {
+            throw new MojoExecutionException("Failed to create node", e);
+        } catch (IOException e) {
+            throw new MojoExecutionException("Failed to store developer node details", e);
+        }
+        runConfiguredScript("preinstallscript");
+        installPackages(resolveSetting("packages", null));
+        runConfiguredScript("postinstallscript");
+    }
+
+    protected NodeMetadata resumeNode() throws MojoExecutionException {
+        try {
+            compute.resumeNode(instanceId);
+        } catch (Throwable e) {
+            getLog().info("Error in resuming node: " + e.getMessage());
+            getLog().debug(e);
+        }
+        NodeMetadata nodeMetadata = compute.getNodeMetadata(instanceId);
+        if (nodeMetadata == null || nodeMetadata.getStatus() != NodeMetadata.Status.RUNNING) {
+            throw new MojoExecutionException("Failed to resume node " + instanceId);
+        }
+        return nodeMetadata;
     }
 }
