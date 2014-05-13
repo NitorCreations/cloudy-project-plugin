@@ -43,136 +43,111 @@ import com.google.inject.Module;
 import com.nitorcreations.cloudyplugin.logging.config.MavenLoggingModule;
 
 public class AbstractCloudyMojo extends AbstractMojo {
-
-	@Parameter( defaultValue = "${project}", required = true )
-	protected MavenProject project;
-
-	@Parameter ( property = "developerId", required = false )
-	private String developerId;
-
-	@Parameter ( property = "securityConfiguration", required = false, defaultValue =  "~/.m2/settings-security.xml")
-	private String securityConfiguration;
-
-	@Parameter( defaultValue = "default", property = "instanceTag", required = true )
-	protected String instanceTag;
-
-	@Parameter( property = "packages", required = false )
+    @Parameter(defaultValue = "${project}", required = true)
+    protected MavenProject project;
+    @Parameter(property = "developerId", required = false)
+    private String developerId;
+    @Parameter(property = "securityConfiguration", required = false, defaultValue = "~/.m2/settings-security.xml")
+    private String securityConfiguration;
+    @Parameter(defaultValue = "default", property = "instanceTag", required = true)
+    protected String instanceTag;
+    @Parameter(property = "packages", required = false)
     protected String packages;
-
-    @Parameter( property = "preinstallscript", required = false )
+    @Parameter(property = "preinstallscript", required = false)
     protected String preinstallscript;
-
-    @Parameter( property = "postinstallscript", required = false )
+    @Parameter(property = "postinstallscript", required = false)
     protected String postinstallscript;
-
-    @Parameter( property = "properties", required = false )
+    @Parameter(property = "properties", required = false)
     protected Map<String, String> properties;
-
-	@Component
+    @Component
     private SecDispatcher securityDispatcher;
-
     protected Developer currentDeveloper;
-	protected String provider;
-	protected String identity;
-	protected String credential;
-	protected String instanceId;
+    protected String provider;
+    protected String identity;
+    protected String credential;
+    protected String instanceId;
     protected ComputeServiceContext context;
-	protected ComputeService compute;
-	protected LoginCredentials login;
-	protected Properties developerNodes = new Properties();
-	protected File developerNodeFile;
+    protected ComputeService compute;
+    protected LoginCredentials login;
+    protected Properties developerNodes = new Properties();
+    protected File developerNodeFile;
 
-	@Override
-	public void execute() throws MojoExecutionException, MojoFailureException {
-		if (securityDispatcher instanceof DefaultSecDispatcher) {
-			((DefaultSecDispatcher)securityDispatcher).setConfigurationFile(securityConfiguration);
-		}
-		String user = System.getProperty("user.name", "");
-		login = LoginCredentials.builder().user(user).build();
-		if (developerId == null) {
-			developerId = user;
-		}
-		if (developerId.isEmpty()) {
-			throw new MojoExecutionException("Failed to get a developer id. Please define one with -DdeveloperId=foo");
-		}
-		Pattern matchAlias = Pattern.compile("(,|^)" + developerId + "(,|$)");
-		for (Developer next : project.getDevelopers()) {
-			String userAliases = next.getProperties().getProperty("useraliases", "");
-			if (developerId.equals(next.getId()) || matchAlias.matcher(userAliases).find() ) {
-				currentDeveloper = next;
-				break;
-			}
-		}
-		if (currentDeveloper == null) {
-			throw new MojoExecutionException("No matching developer entry found. Add a developer entry with id " + developerId + " or the same as 'useralias' property for a developer");
-		} 
-		
-		getLog().info("Using properties from developer " + currentDeveloper.getId());
-		
-		Properties developerProperties = currentDeveloper.getProperties();
-		provider = developerProperties.getProperty("provider");
-		try {
-			identity = securityDispatcher.decrypt(developerProperties.getProperty("identity"));
-			credential = securityDispatcher.decrypt(developerProperties.getProperty("credential"));
-		} catch (SecDispatcherException e) {
-			e.printStackTrace();
-		}
-		if (provider == null || provider.isEmpty() || 
-				identity == null || identity.isEmpty() ||
-				credential == null || credential.isEmpty()) {
-			throw new MojoExecutionException("Some provider information missing - provider: '" + provider +
-					"' indetity: '" + identity + "' credential: '" + credential + "'");
-		}
-		compute = initComputeService();
-		File pom = project.getFile();
-		developerNodeFile = new File(pom.getParentFile(), "." + currentDeveloper.getId() + "-nodes");
-		if (developerNodeFile.exists()) {
-			try (InputStream in = new FileInputStream(developerNodeFile)){
-				developerNodes.load(in);
-			} catch (IOException e) {
-				throw new MojoExecutionException("Failed to read developer node data", e);
-			}
-		}
+    @Override
+    public void execute() throws MojoExecutionException, MojoFailureException {
+        if (securityDispatcher instanceof DefaultSecDispatcher) {
+            ((DefaultSecDispatcher) securityDispatcher).setConfigurationFile(securityConfiguration);
+        }
+        String user = System.getProperty("user.name", "");
+        login = LoginCredentials.builder().user(user).build();
+        if (developerId == null) {
+            developerId = user;
+        }
+        if (developerId.isEmpty()) {
+            throw new MojoExecutionException("Failed to get a developer id. Please define one with -DdeveloperId=foo");
+        }
+        Pattern matchAlias = Pattern.compile("(,|^)" + developerId + "(,|$)");
+        for (Developer next : project.getDevelopers()) {
+            String userAliases = next.getProperties().getProperty("useraliases", "");
+            if (developerId.equals(next.getId()) || matchAlias.matcher(userAliases).find()) {
+                currentDeveloper = next;
+                break;
+            }
+        }
+        if (currentDeveloper == null) {
+            throw new MojoExecutionException("No matching developer entry found. Add a developer entry with id " + developerId + " or the same as 'useralias' property for a developer");
+        }
+        getLog().info("Using properties from developer " + currentDeveloper.getId());
+        Properties developerProperties = currentDeveloper.getProperties();
+        provider = developerProperties.getProperty("provider");
+        try {
+            identity = securityDispatcher.decrypt(developerProperties.getProperty("identity"));
+            credential = securityDispatcher.decrypt(developerProperties.getProperty("credential"));
+        } catch (SecDispatcherException e) {
+            e.printStackTrace();
+        }
+        if (provider == null || provider.isEmpty() || identity == null || identity.isEmpty() || credential == null || credential.isEmpty()) {
+            throw new MojoExecutionException("Some provider information missing - provider: '" + provider + "' indetity: '" + identity + "' credential: '" + credential + "'");
+        }
+        compute = initComputeService();
+        File pom = project.getFile();
+        developerNodeFile = new File(pom.getParentFile(), "." + currentDeveloper.getId() + "-nodes");
+        if (developerNodeFile.exists()) {
+            try (InputStream in = new FileInputStream(developerNodeFile)) {
+                developerNodes.load(in);
+            } catch (IOException e) {
+                throw new MojoExecutionException("Failed to read developer node data", e);
+            }
+        }
+        if (developerNodes.getProperty(instanceTag) != null) {
+            instanceId = developerNodes.getProperty(instanceTag);
+        }
+    }
 
-		if (developerNodes.getProperty(instanceTag) != null) {
-			instanceId = developerNodes.getProperty(instanceTag);
-		}
-	}
-
-	protected ComputeService initComputeService() throws MojoExecutionException {
-		Properties overrideProperties = new Properties();
-		try (InputStream in = getClass().getClassLoader().getResourceAsStream(provider + ".defaultOverrides")) {
-			overrideProperties.load(in);
-		} catch (IOException e) {
-			throw new MojoExecutionException("Failed to read provider default overrides", e);
-		}
-		List<String> otherOverrides = resolveAllSettings("overrides");
-		for (int i = otherOverrides.size() -1; i>=0; i--) {
+    protected ComputeService initComputeService() throws MojoExecutionException {
+        Properties overrideProperties = new Properties();
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream(provider + ".defaultOverrides")) {
+            overrideProperties.load(in);
+        } catch (IOException e) {
+            throw new MojoExecutionException("Failed to read provider default overrides", e);
+        }
+        List<String> otherOverrides = resolveAllSettings("overrides");
+        for (int i = otherOverrides.size() - 1; i >= 0; i--) {
             try (InputStream in = new FileInputStream(otherOverrides.get(i))) {
                 overrideProperties.load(in);
             } catch (IOException e) {
                 throw new MojoExecutionException("Failed to read overrides for instance tag " + instanceTag, e);
             }
-		}
+        }
+        long scriptTimeout = TimeUnit.MILLISECONDS.convert(20, TimeUnit.MINUTES);
+        overrideProperties.setProperty(TIMEOUT_SCRIPT_COMPLETE, scriptTimeout + "");
+        Iterable<Module> modules = ImmutableSet.<Module> of(new JschSshClientModule(), new MavenLoggingModule(getLog()), new EnterpriseConfigurationModule());
+        ContextBuilder builder = ContextBuilder.newBuilder(provider).credentials(identity, credential).modules(modules).overrides(overrideProperties);
+        context = builder.buildView(ComputeServiceContext.class);
+        return context.getComputeService();
+    }
 
-		long scriptTimeout = TimeUnit.MILLISECONDS.convert(20, TimeUnit.MINUTES);
-		overrideProperties.setProperty(TIMEOUT_SCRIPT_COMPLETE, scriptTimeout + "");
-
-		Iterable<Module> modules = ImmutableSet.<Module> of(
-				new JschSshClientModule(),
-				new MavenLoggingModule(getLog()),
-				new EnterpriseConfigurationModule());
-
-		ContextBuilder builder = ContextBuilder.newBuilder(provider)
-				.credentials(identity, credential)
-				.modules(modules)
-				.overrides(overrideProperties);
-		context = builder.buildView(ComputeServiceContext.class);
-		return context.getComputeService();
-	}
-
-	protected List<String> resolveAllSettings(String name) {
-	    ArrayList<String> ret = new ArrayList<>();
+    protected List<String> resolveAllSettings(String name) {
+        ArrayList<String> ret = new ArrayList<>();
         if (currentDeveloper.getProperties().getProperty(instanceTag + "-" + name) != null) {
             ret.add(currentDeveloper.getProperties().getProperty(instanceTag + "-" + name));
         }
@@ -185,7 +160,8 @@ public class AbstractCloudyMojo extends AbstractMojo {
         try {
             Field field = getClass().getField(name);
             Object value = field.get(this);
-            if (value != null) ret.add(value.toString());
+            if (value != null)
+                ret.add(value.toString());
         } catch (IllegalAccessException | NoSuchFieldException | SecurityException | IllegalArgumentException e) {
             // Oh well...
         }
@@ -199,36 +175,36 @@ public class AbstractCloudyMojo extends AbstractMojo {
             ret.add(properties.get(name));
         }
         return ret;
-	}
+    }
 
-	protected String resolveSetting(String name, String defaultValue) {
-	    List<String> ret = resolveAllSettings(name);
-	    if (ret.size() != 0) {
-	        return ret.get(0);
-	    }
-	    return defaultValue;
-	}
+    protected String resolveSetting(String name, String defaultValue) {
+        List<String> ret = resolveAllSettings(name);
+        if (ret.size() != 0) {
+            return ret.get(0);
+        }
+        return defaultValue;
+    }
 
     public static String getResource(String resource) throws IOException {
-    	if (resource.startsWith("classpath:")) {
-    	    String res = resource.substring(10);
-    	    if (!res.startsWith("/")) {
-    	        res = "/" + res;
-    	    }
-    		try (InputStream in = AbstractCloudyMojo.class.getResourceAsStream(res)) {
-    		    if (in == null) throw new IOException("Classpath resource " + resource + " not found");
-    		    return new String(Streams.readAll(in), Charset.forName("UTF-8"));
-    		}
-    	}
-    	return Files.toString(new File(resource), Charset.forName("UTF-8"));
+        if (resource.startsWith("classpath:")) {
+            String res = resource.substring(10);
+            if (!res.startsWith("/")) {
+                res = "/" + res;
+            }
+            try (InputStream in = AbstractCloudyMojo.class.getResourceAsStream(res)) {
+                if (in == null)
+                    throw new IOException("Classpath resource " + resource + " not found");
+                return new String(Streams.readAll(in), Charset.forName("UTF-8"));
+            }
+        }
+        return Files.toString(new File(resource), Charset.forName("UTF-8"));
     }
 
     protected boolean waitForStatus(String nodeId, Status status, long timeout) {
         long end = System.currentTimeMillis() + timeout;
         while (System.currentTimeMillis() < end) {
-            NodeMetadata state = compute.getNodeMetadata(nodeId); 
-            if ((state == null && status == Status.TERMINATED) ||
-                (state != null && state.getStatus() == status)       ) {
+            NodeMetadata state = compute.getNodeMetadata(nodeId);
+            if ((state == null && status == Status.TERMINATED) || (state != null && state.getStatus() == status)) {
                 return true;
             }
         }
@@ -240,8 +216,7 @@ public class AbstractCloudyMojo extends AbstractMojo {
         if (scriptResource != null && !scriptResource.isEmpty()) {
             try {
                 String content = getResource(scriptResource);
-                compute.runScriptOnNode(instanceId, exec(content),
-                    overrideLoginCredentials(login).runAsRoot(true).wrapInInitScript(false));
+                compute.runScriptOnNode(instanceId, exec(content), overrideLoginCredentials(login).runAsRoot(true).wrapInInitScript(false));
             } catch (Throwable e) {
                 throw new MojoExecutionException("Failed to run " + parameterName, e);
             }
@@ -258,7 +233,6 @@ public class AbstractCloudyMojo extends AbstractMojo {
         for (String next : packageList.split(",")) {
             pkg.addPackage(next);
         }
-        compute.runScriptOnNode(instanceId, exec(pkg.build()),
-            overrideLoginCredentials(login).runAsRoot(true).wrapInInitScript(false));
+        compute.runScriptOnNode(instanceId, exec(pkg.build()), overrideLoginCredentials(login).runAsRoot(true).wrapInInitScript(false));
     }
 }

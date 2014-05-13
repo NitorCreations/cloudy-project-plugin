@@ -6,17 +6,15 @@ import org.jclouds.logging.config.LoggingModule;
 
 import com.nitorcreations.cloudyplugin.logging.MavenLogger.MavenLoggerFactory;
 
-public class MavenLoggingModule  extends LoggingModule{
+public class MavenLoggingModule extends LoggingModule {
+    private Log logger;
 
-	private Log logger;
+    public MavenLoggingModule(Log logger) {
+        this.logger = logger;
+    }
 
-	public MavenLoggingModule(Log logger) {
-		this.logger = logger;
-	}
-
-	@Override
-	public LoggerFactory createLoggerFactory() {
-		return new MavenLoggerFactory(logger);
-	}
-
+    @Override
+    public LoggerFactory createLoggerFactory() {
+        return new MavenLoggerFactory(logger);
+    }
 }

@@ -13,44 +13,41 @@ import org.jclouds.compute.RunNodesException;
 import org.jclouds.compute.domain.NodeMetadata;
 import org.jclouds.compute.domain.TemplateBuilder;
 
-@Mojo( name = "init",  aggregator = true )
-public class InitMojo extends AbstractCloudyMojo
-{
-	private final CustomizerResolver resolver;
+@Mojo(name = "init", aggregator = true)
+public class InitMojo extends AbstractCloudyMojo {
+    private final CustomizerResolver resolver;
 
-	public InitMojo() {
-		this.resolver = new GroovyCustomizerResolver();
-	}
+    public InitMojo() {
+        this.resolver = new GroovyCustomizerResolver();
+    }
 
-	@Override
-    public void execute() throws MojoExecutionException, MojoFailureException	{
-		super.execute();
-		String groupName = project.getGroupId().replaceAll("[^a-zA-Z\\-]", "-") + "-" + project.getArtifactId().replaceAll("[^a-zA-Z\\-]", "-");
-		if (instanceId != null) {
-			NodeMetadata existingNode = compute.getNodeMetadata(instanceId);
-			if (existingNode != null && existingNode.getStatus() != NodeMetadata.Status.TERMINATED) {
-				throw new MojoExecutionException("Developernode with tag " + instanceTag + " already exists with id: " + instanceId);
-			} 
-			getLog().info("Existing node with tag " + instanceTag + " with id " + instanceId + " found in local configuration but not active in the backend service");
-		}
-
-		TemplateCustomizer customizer = resolver.resolveCustomizer(instanceTag, provider, currentDeveloper.getProperties());
-		TemplateBuilder templateBuilder = compute.templateBuilder();
-		customizer.customize(templateBuilder);
-		NodeMetadata node;
-		try (OutputStream out = new FileOutputStream(developerNodeFile)){
-			node = getOnlyElement(compute.createNodesInGroup(groupName, 1, templateBuilder.build()));
-			instanceId = node.getId();
-			developerNodes.put(instanceTag, instanceId);
-			developerNodes.store(out, null);
-		} catch (RunNodesException e) {
-			throw new MojoExecutionException("Failed to create node", e);
-		} catch (IOException e) {
-			throw new MojoExecutionException("Failed to store developer node details", e);
-		}
-		
-		runConfiguredScript("preinstallscript");
-		installPackages(resolveSetting("packages", null));
+    @Override
+    public void execute() throws MojoExecutionException, MojoFailureException {
+        super.execute();
+        String groupName = project.getGroupId().replaceAll("[^a-zA-Z\\-]", "-") + "-" + project.getArtifactId().replaceAll("[^a-zA-Z\\-]", "-");
+        if (instanceId != null) {
+            NodeMetadata existingNode = compute.getNodeMetadata(instanceId);
+            if (existingNode != null && existingNode.getStatus() != NodeMetadata.Status.TERMINATED) {
+                throw new MojoExecutionException("Developernode with tag " + instanceTag + " already exists with id: " + instanceId);
+            }
+            getLog().info("Existing node with tag " + instanceTag + " with id " + instanceId + " found in local configuration but not active in the backend service");
+        }
+        TemplateCustomizer customizer = resolver.resolveCustomizer(instanceTag, provider, currentDeveloper.getProperties());
+        TemplateBuilder templateBuilder = compute.templateBuilder();
+        customizer.customize(templateBuilder);
+        NodeMetadata node;
+        try (OutputStream out = new FileOutputStream(developerNodeFile)) {
+            node = getOnlyElement(compute.createNodesInGroup(groupName, 1, templateBuilder.build()));
+            instanceId = node.getId();
+            developerNodes.put(instanceTag, instanceId);
+            developerNodes.store(out, null);
+        } catch (RunNodesException e) {
+            throw new MojoExecutionException("Failed to create node", e);
+        } catch (IOException e) {
+            throw new MojoExecutionException("Failed to store developer node details", e);
+        }
+        runConfiguredScript("preinstallscript");
+        installPackages(resolveSetting("packages", null));
         runConfiguredScript("postinstallscript");
-	}
+    }
 }
